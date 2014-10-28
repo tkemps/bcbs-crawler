@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module BcbsCrawler where
+module Main where
 
 import Control.Applicative
 import qualified Control.Exception as Ex
@@ -21,6 +21,10 @@ import Data.Time
 import Network.Curl
 import Text.HTML.TagSoup
 import qualified Text.Pandoc as P
+
+main = do
+  docs <- crawlBisBcbsPublications
+  writeDocs docs "out/bcbs-publications.txt"
 
 type TTag = Tag Text
 
@@ -49,8 +53,8 @@ instance ToRecord BISDoc where
 showMaybe (Just x) = show x
 showMaybe Nothing = ""
 
-writeDocs :: [BISDoc] -> IO ()
-writeDocs docs = B.writeFile "bis-bcbs-docs.txt" (encode docs)
+writeDocs :: [BISDoc] -> String -> IO ()
+writeDocs docs filename = B.writeFile filename (encode docs)
 
 putStrLns :: [Text] -> IO ()
 putStrLns = T.putStrLn . T.concat
@@ -91,23 +95,18 @@ crawlBisBcbsPublications = withCurlDo $ do
 processBISDocPage :: [TTag] -> IO [BISDoc]
 processBISDocPage tags = do
   let ts = simpleTables tags
---  putStrLns ["No. of tables: ",showT (length ts)]
   if null ts
      then do
        T.putStrLn "No table found on page."
        return []
     else do
        let t1 = head ts
---       putStrLns ["Head line in first table: ",showT (header t1)]
---       putStrLns ["No. of rows in first table: ",showT (length (rows t1))]
---       putStrLns ["No. of columns in first row: ",showT (length $ elements $ (rows t1)!!1)]
---       putStrLns ["First row in first table: ",showT (elements $ (rows t1)!!0)]
        let docs = map (\r -> let es = elements r
                              in BISDoc (getDateFromRow es)
                                 (getTypeFromRow es)
                                 (getLinkFromRow es)
                                 (getTitleFromRow es)) (rows t1)
---       T.putStrLn (showT docs)
+       T.putStrLn ("Found: " `T.append` (showT (map title docs)))
        return docs
 
 parseDate :: Parser Day
@@ -194,7 +193,8 @@ data TableRow = TableRow {
   elements :: [[TTag]]
   } deriving (Show)
 
--- table should have a simple rectangualr structure and only on header row and at least one body row.
+-- table should have a simple rectangular structure and only on header row and at
+-- least one body row.
 simpleTables :: [TTag] -> [Table]
 simpleTables tags =
   let ts = partitions (~== (TagOpen ("table"::Text) [])) tags
