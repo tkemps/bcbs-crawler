@@ -111,7 +111,7 @@ processParams = do
   let t0 = fromString (paramFrom params) :: Maybe Day
   let t1 = fromString (paramUntil params) :: Maybe Day
   let db = T.pack $ let x = paramMongoDb params
-                    in if null x then "BIS" else x
+                    in if null x then "BCBS" else x
   let host = let h = paramMongoHost params
              in if null h then "127.0.0.1" else h
   let port = let p = fromIntegral $ paramMongoPort params
